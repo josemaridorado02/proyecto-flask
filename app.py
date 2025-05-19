@@ -1,4 +1,5 @@
 import json
+import os
 from flask import Flask, render_template, request, abort, redirect, url_for
 
 app = Flask(__name__)
@@ -17,34 +18,33 @@ except Exception as e:
     print(f"Error inesperado al cargar 'juegos.json': {e}")
     juegos = []
 
+# Obtener lista única de desarrolladoras
+desarrolladoras = sorted(list(set(juego['desarrolladora'] for juego in juegos)))
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/juegos')
+@app.route('/juegos', methods=['GET', 'POST'])
 def buscar_juegos():
-    return render_template('buscar_juegos.html')
-
-@app.route('/listajuegos', methods=['POST'])
-def lista_juegos():
-    # Obtener el término de búsqueda del formulario
-    termino = request.form.get('termino', '').strip().lower()
+    termino = request.form.get('termino', '').strip().lower() if request.method == 'POST' else ''
+    desarrolladora = request.form.get('desarrolladora', '') if request.method == 'POST' else ''
     
-    # Filtrar juegos según el término de búsqueda
-    if termino:
-        juegos_filtrados = [juego for juego in juegos if juego['titulo'].lower().startswith(termino)]
-    else:
-        juegos_filtrados = juegos
+    juegos_filtrados = juegos
+    if termino or desarrolladora:
+        juegos_filtrados = [juego for juego in juegos if 
+                          (not termino or juego['titulo'].lower().startswith(termino)) and
+                          (not desarrolladora or juego['desarrolladora'] == desarrolladora)]
     
-    return render_template('lista_juegos.html', juegos=juegos_filtrados)
+    return render_template('buscar_juegos.html', juegos=juegos_filtrados, termino=termino, desarrolladoras=desarrolladoras, desarrolladora_seleccionada=desarrolladora)
 
 @app.route('/juego/<id>')
 def detalle_juego(id):
-    # Buscar el juego por ID
     juego = next((j for j in juegos if j['_id'] == id), None)
     if juego is None:
-        abort(404)  # Devolver 404 si el juego no existe
+        abort(404)
     return render_template('detalle_juego.html', juego=juego)
 
 if __name__ == '__main__':
-    app.run()
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
