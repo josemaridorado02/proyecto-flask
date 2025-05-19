@@ -4,39 +4,39 @@ from flask import Flask, render_template, request, abort, redirect, url_for
 
 app = Flask(__name__)
 
-# Cargar los datos del archivo JSON con manejo de errores
-try:
-    with open('juegos.json', 'r', encoding='utf-8') as file:
-        juegos = json.load(file)
-except FileNotFoundError:
-    print("Error: El archivo 'juegos.json' no se encuentra en el directorio.")
-    juegos = []
-except json.JSONDecodeError:
-    print("Error: El archivo 'juegos.json' tiene un formato JSON inválido.")
-    juegos = []
-except Exception as e:
-    print(f"Error inesperado al cargar 'juegos.json': {e}")
-    juegos = []
+# Función para cargar los datos del archivo JSON
+def load_juegos():
+    try:
+        with open('juegos.json', 'r', encoding='utf-8') as file:
+            return json.load(file)
+    except FileNotFoundError:
+        print("Error: El archivo 'juegos.json' no se encuentra en el directorio.")
+        return []
+    except json.JSONDecodeError:
+        print("Error: El archivo 'juegos.json' tiene un formato JSON inválido.")
+        return []
+    except Exception as e:
+        print(f"Error inesperado al cargar 'juegos.json': {e}")
+        return []
 
-# Obtener lista única de desarrolladoras
-desarrolladoras = sorted(list(set(juego['desarrolladora'] for juego in juegos)))
+juegos = load_juegos()
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/juegos', methods=['GET', 'POST'])
+@app.route('/juegos')
 def buscar_juegos():
-    termino = request.form.get('termino', '').strip().lower() if request.method == 'POST' else ''
-    desarrolladora = request.form.get('desarrolladora', '') if request.method == 'POST' else ''
-    
-    juegos_filtrados = juegos
-    if termino or desarrolladora:
-        juegos_filtrados = [juego for juego in juegos if 
-                          (not termino or juego['titulo'].lower().startswith(termino)) and
-                          (not desarrolladora or juego['desarrolladora'] == desarrolladora)]
-    
-    return render_template('buscar_juegos.html', juegos=juegos_filtrados, termino=termino, desarrolladoras=desarrolladoras, desarrolladora_seleccionada=desarrolladora)
+    return render_template('buscar_juegos.html')
+
+@app.route('/listajuegos', methods=['POST'])
+def lista_juegos():
+    termino = request.form.get('termino', '').strip().lower()
+    if termino:
+        juegos_filtrados = [juego for juego in juegos if juego['titulo'].lower().startswith(termino)]
+    else:
+        juegos_filtrados = juegos
+    return render_template('lista_juegos.html', juegos=juegos_filtrados)
 
 @app.route('/juego/<id>')
 def detalle_juego(id):
